@@ -156,7 +156,16 @@ describe "rspec-conductor executable" do
       args: ["-w", "1", "--verbose", "--postfork-require", "spec_helper.rb"],
       expect_exit: 0,
       expect_output: "1 passed, 0 failed, 0 pending"
-    }
+    },
+    {
+      name: "--print-slowest param",
+      specs: {
+        "a_spec.rb" => "RSpec.describe('test --print-slowest') {\n it('works') { expect(true).to be(true) }\n it('fails') { expect(false).to be(true) }\n }"
+      },
+      args: ["--print-slowest", "10"],
+      expect_exit: 1,
+      expect_output: ["Slowest 10 specs", "test --print-slowest works", "a_spec.rb:2", "test --print-slowest fails", "a_spec.rb:3"]
+    },
   ].freeze
 
   SCENARIOS.each do |scenario|
@@ -166,7 +175,13 @@ describe "rspec-conductor executable" do
       result = run_conductor(*scenario[:args])
 
       expect(result[:exit_code]).to eq(scenario[:expect_exit])
-      expect(RSpec::Conductor::Util::ANSI.visible_chars(result[:output])).to include(scenario[:expect_output])
+      Array(scenario[:expect_output]).each do |expected_output|
+        if expected_output.is_a?(Regexp)
+          expect(RSpec::Conductor::Util::ANSI.visible_chars(result[:output])).to match(expected_output)
+        else
+          expect(RSpec::Conductor::Util::ANSI.visible_chars(result[:output])).to include(expected_output)
+        end
+      end
     end
   end
 end
