@@ -30,9 +30,9 @@ module RSpec
           super(**kwargs)
         end
 
-        def handle_worker_message(worker_process, message, results)
+        def handle_worker_message(worker_process, message, suite_run)
           public_send(message[:type], worker_process, message) if respond_to?(message[:type])
-          redraw(worker_process, results)
+          redraw(worker_process, suite_run)
         end
 
         def example_passed(_worker_process, _message)
@@ -66,9 +66,9 @@ module RSpec
 
         private
 
-        def redraw(worker_process, results)
+        def redraw(worker_process, suite_run)
           update_worker_status_line(worker_process)
-          update_results_line(results)
+          update_suite_run_line(suite_run)
           update_errors_line
           @terminal.redraw
           @terminal.scroll_to_bottom
@@ -94,13 +94,13 @@ module RSpec
           @worker_lines[worker_process.number].update(status, redraw: false)
         end
 
-        def update_results_line(results)
-          pct = results.spec_file_processed_percentage
+        def update_suite_run_line(suite_run)
+          pct = suite_run.spec_file_processed_percentage
           bar_width = [tty_width - 20, 20].max
           filled = (pct * bar_width).floor
           empty = bar_width - filled
 
-          percentage = " %3d%% (%d/%d)" % [(pct * 100).floor, results.spec_files_processed, results.spec_files_total]
+          percentage = " %3d%% (%d/%d)" % [(pct * 100).floor, suite_run.spec_files_processed, suite_run.spec_files_total]
           bar = colorize("[", :reset) + colorize("▓", :green) * filled + colorize(" ", :reset) * empty + colorize("]", :reset)
 
           @progress_bar_line.update(bar + percentage, redraw: false)
