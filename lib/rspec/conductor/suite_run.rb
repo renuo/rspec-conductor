@@ -2,7 +2,7 @@
 
 module RSpec
   module Conductor
-    class Results
+    class SuiteRun
       attr_accessor :examples_passed, :examples_failed, :examples_pending, :worker_crashes, :errors, :started_at, :spec_files_total, :spec_files_processed
 
       def initialize

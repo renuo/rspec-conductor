@@ -47,7 +47,7 @@ module RSpec
                              (!@verbose && Formatters::Fancy.recommended?) ? Formatters::Fancy : Formatters::Plain
                            end
         @formatter = @formatter_class.new(worker_count: @worker_count)
-        @results = Results.new
+        @suite_run = SuiteRun.new
 
         $stdout.sync = true
         $stdin.echo = false if $stdin.tty?
@@ -65,9 +65,9 @@ module RSpec
         start_workers
         run_event_loop
         wait_for_workers_to_exit
-        @results.suite_complete
+        @suite_run.suite_complete
 
-        @formatter.print_summary(@results, seed: @seed, success: success?)
+        @formatter.print_summary(@suite_run, seed: @seed, success: success?)
         exit_with_status
       end
 
@@ -95,7 +95,7 @@ module RSpec
         debug "RSpec config: #{config.inspect}"
         debug "Files to run: #{config.files_to_run}"
         @spec_queue = config.files_to_run.shuffle(random: Random.new(@seed))
-        @results.spec_files_total = @spec_queue.size
+        @suite_run.spec_files_total = @spec_queue.size
       end
 
       def preload_application
@@ -168,29 +168,29 @@ module RSpec
 
         case message[:type].to_sym
         when :example_passed
-          @results.example_passed
+          @suite_run.example_passed
         when :example_failed
-          @results.example_failed(message)
+          @suite_run.example_failed(message)
 
-          if @fail_fast_after && @results.examples_failed >= @fail_fast_after
-            debug "Shutting down after #{@results.examples_failed} failures"
+          if @fail_fast_after && @suite_run.examples_failed >= @fail_fast_after
+            debug "Shutting down after #{@suite_run.examples_failed} failures"
             initiate_shutdown
           end
         when :example_pending
-          @results.example_pending
+          @suite_run.example_pending
         when :example_retried
           @formatter.print_retry_message(message) if @display_retry_backtraces
         when :spec_complete
-          @results.spec_file_complete
+          @suite_run.spec_file_complete
           worker_process.current_spec = nil
           assign_work(worker_process)
         when :spec_error
-          @results.spec_file_error(message)
+          @suite_run.spec_file_error(message)
           debug "Spec error details: #{message[:error]}"
           worker_process.current_spec = nil
           assign_work(worker_process)
         end
-        @formatter.handle_worker_message(worker_process, message, @results)
+        @formatter.handle_worker_message(worker_process, message, @suite_run)
       end
 
       def assign_work(worker_process)
@@ -201,18 +201,18 @@ module RSpec
           worker_process.socket.send_message({ type: :shutdown })
           cleanup_worker_process(worker_process)
         else
-          @results.spec_file_assigned
+          @suite_run.spec_file_assigned
           worker_process.current_spec = spec_file
           debug "Assigning #{spec_file} to worker #{worker_process.number}"
           message = { type: :worker_assigned_spec, file: spec_file }
           worker_process.socket.send_message(message)
-          @formatter.handle_worker_message(worker_process, message, @results)
+          @formatter.handle_worker_message(worker_process, message, @suite_run)
         end
       end
 
       def cleanup_worker_process(worker_process, status: :shut_down)
         worker_process.shut_down(status)
-        @formatter.handle_worker_message(worker_process, { type: :worker_shut_down }, @results)
+        @formatter.handle_worker_message(worker_process, { type: :worker_shut_down }, @suite_run)
       end
 
       def reap_workers
@@ -224,7 +224,7 @@ module RSpec
 
         dead_worker_processes.each do |worker_process, exitstatus|
           cleanup_worker_process(worker_process, status: :terminated)
-          @results.worker_crashed
+          @suite_run.worker_crashed
           debug "Worker #{worker_process.number} exited with status #{exitstatus.exitstatus}, signal #{exitstatus.termsig}"
         end
       end
@@ -243,7 +243,7 @@ module RSpec
       end
 
       def success?
-        @results.success? && !shutting_down?
+        @suite_run.success? && !shutting_down?
       end
 
       def exit_with_status

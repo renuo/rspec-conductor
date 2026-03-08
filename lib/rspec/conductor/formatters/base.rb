@@ -9,7 +9,7 @@ module RSpec
         def initialize(**_kwargs)
         end
 
-        def handle_worker_message(_worker_process, _message, _results)
+        def handle_worker_message(_worker_process, _message, _suite_run)
         end
 
         def print_startup_banner(worker_count:, seed:, spec_files_count:)
@@ -17,15 +17,15 @@ module RSpec
           puts "Running #{spec_files_count} spec files\n\n"
         end
 
-        def print_summary(results, seed:, success:)
+        def print_summary(suite_run, seed:, success:)
           puts "\n\n"
           puts "Randomized with seed #{seed}"
-          puts "#{colorize("#{results.examples_passed} passed", :green)}, #{colorize("#{results.examples_failed} failed", :red)}, #{colorize("#{results.examples_pending} pending", :yellow)}"
-          puts colorize("Worker crashes: #{results.worker_crashes}", :red) if results.worker_crashes.positive?
+          puts "#{colorize("#{suite_run.examples_passed} passed", :green)}, #{colorize("#{suite_run.examples_failed} failed", :red)}, #{colorize("#{suite_run.examples_pending} pending", :yellow)}"
+          puts colorize("Worker crashes: #{suite_run.worker_crashes}", :red) if suite_run.worker_crashes.positive?
 
-          if results.errors.any?
+          if suite_run.errors.any?
             puts "\nFailures:\n\n"
-            results.errors.each_with_index do |error, i|
+            suite_run.errors.each_with_index do |error, i|
               puts "  #{i + 1}) #{error[:description]}"
               puts colorize("     #{error[:message]}", :red) if error[:message]
               puts colorize("     #{error[:location]}", :cyan)
@@ -37,14 +37,14 @@ module RSpec
             end
           end
 
-          puts "Specs took: #{results.specs_runtime.round(2)}s"
-          puts "Total runtime: #{results.total_runtime.round(2)}s"
+          puts "Specs took: #{suite_run.specs_runtime.round(2)}s"
+          puts "Total runtime: #{suite_run.total_runtime.round(2)}s"
           puts "Suite: #{success ? colorize("PASSED", :green) : colorize("FAILED", :red)}"
 
-          if results.errors.any?
+          if suite_run.errors.any?
             puts ""
             puts "To rerun failed examples:"
-            puts "  rspec #{results.errors.map { |e| e[:location] }.join(" ")}"
+            puts "  rspec #{suite_run.errors.map { |e| e[:location] }.join(" ")}"
           end
         end
 

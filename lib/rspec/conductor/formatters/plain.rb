@@ -4,7 +4,7 @@ module RSpec
   module Conductor
     module Formatters
       class Plain < Base
-        def handle_worker_message(_worker_process, message, _results)
+        def handle_worker_message(_worker_process, message, _suite_run)
           public_send(message[:type], message) if respond_to?(message[:type])
         end
 
